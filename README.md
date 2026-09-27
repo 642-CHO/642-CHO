@@ -10,7 +10,7 @@
 
 [![腱驱灵巧手整机实物](https://raw.githubusercontent.com/642-CHO/dexterous-hand-teleoperation/main/assets/hand-overview.png)](https://github.com/642-CHO/dexterous-hand-teleoperation)
 
-基于开源 AeroHand 的腱驱灵巧手课程项目，集成摄像头手部关键点检测、本地 Web 控制台与串口舵机控制，支持 **视觉连续跟随与预设手势调用** 两种模式，完成实机联调与现场路演。
+基于开源 AeroHand 的腱驱灵巧手项目，集成摄像头手部关键点检测、本地 Web 控制台与串口舵机控制，支持 **视觉连续跟随与预设手势调用** 两种模式，完成实机联调与现场路演。
 
 **项目亮点**
 
