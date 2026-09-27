@@ -1,0 +1,65 @@
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 58px;
+  padding: 11px 32px 11px 42px;
+  color: #fff7f0;
+  background: #b94f13;
+  border-bottom: 4px solid #81350d;
+  font-size: 13px;
+}
+
+.demo-banner div {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+
+.demo-banner strong {
+  color: #ffffff;
+  font-family: "Bahnschrift", "Microsoft YaHei", sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.demo-banner nav {
+  display: flex;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.demo-banner a {
+  padding: 6px 10px;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 2px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.demo-banner a:hover,
+.demo-banner a:focus-visible {
+  color: #0a2740;
+  background: #ffffff;
+  outline: none;
+}
+
+.camera-frame img {
+  object-fit: cover;
+  background: #071d2f;
+}
+
+@media (max-width: 1320px) {
+  .demo-banner {
+    align-items: flex-start;
+  }
+
+  .demo-banner div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}

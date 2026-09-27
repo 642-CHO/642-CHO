@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>腱绳灵巧手控制台</title>
+    <meta name="description" content="腱绳灵巧手七路执行器、预设手势与视觉同步控制台的纯前端交互演示。">
+    <link rel="icon" href="./hand-tracking-demo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./app.css?v=1.0.0">
+    <link rel="stylesheet" href="./demo.css?v=1.0.0">
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="brand-block">
+        <span class="eyebrow">DEXTEROUS HAND / INTERACTIVE DEMO</span>
+        <h1>腱绳灵巧手控制台</h1>
+        <p>7 × STS3215 · 预设手势 + 视觉同步 · 纯前端模拟</p>
+      </div>
+      <div class="status-ribbon" aria-live="polite">
+        <span id="modeChip" class="chip warn">模拟模式</span>
+        <span id="connectionChip" class="chip muted">未连接</span>
+        <span id="calibrationChip" class="chip muted">未标定</span>
+        <span id="actionChip" class="chip muted">空闲</span>
+      </div>
+      <button id="estopButton" class="estop" type="button" disabled>
+        <span class="estop-mark" aria-hidden="true"></span>
+        模拟急停 / 冻结
+      </button>
+    </header>
+
+    <aside class="demo-banner" aria-label="演示说明">
+      <div>
+        <strong>GitHub Pages 交互演示</strong>
+        <span>所有设备连接、舵机遥测和视觉跟随均在浏览器内模拟，不会访问串口或控制真实硬件。</span>
+      </div>
+      <nav aria-label="相关链接">
+        <a href="https://github.com/642-CHO" target="_blank" rel="noreferrer">GitHub 主页</a>
+        <a href="https://github.com/642-CHO/dexterous-hand-teleoperation" target="_blank" rel="noreferrer">项目说明</a>
+      </nav>
+    </aside>
+
+    <main class="console-grid">
+      <aside class="left-rail">
+        <section class="panel connection-panel">
+          <div class="section-heading">
+            <span>01</span>
+            <div>
+              <p>DEVICE</p>
+              <h2>设备与使能</h2>
+            </div>
+          </div>
+          <div class="button-pair">
+            <button id="connectButton" class="button primary" type="button">连接模拟器</button>
+            <button id="disconnectButton" class="button ghost" type="button" disabled>断开</button>
+          </div>
+          <div class="button-pair">
+            <button id="armButton" class="button success" type="button" disabled>控制使能</button>
+            <button id="disarmButton" class="button ghost" type="button" disabled>卸力</button>
+          </div>
+          <p class="safety-note">展示版不访问 FE-URT-2、串口或 12 V 实机电源。</p>
+        </section>
+
+        <section class="panel calibration-panel">
+          <div class="section-heading">
+            <span>02</span>
+            <div>
+              <p>CALIBRATION</p>
+              <h2>单轴标定与归零</h2>
+            </div>
+          </div>
+          <label class="field-label" for="channelSelect">当前通道</label>
+          <select id="channelSelect" class="select"></select>
+
+          <div class="jog-block">
+            <span class="field-label">安全点动</span>
+            <div class="jog-grid">
+              <button class="button jog" type="button" data-delta="-50">−50</button>
+              <button class="button jog" type="button" data-delta="-20">−20</button>
+              <button class="button jog" type="button" data-delta="-5">−5</button>
+              <button class="button jog" type="button" data-delta="5">+5</button>
+              <button class="button jog" type="button" data-delta="20">+20</button>
+              <button class="button jog" type="button" data-delta="50">+50</button>
+            </div>
+          </div>
+
+          <div class="endpoint-grid">
+            <button id="captureMinButton" class="button endpoint" type="button">记录 0% 参考端</button>
+            <output id="minOutput">尚未记录</output>
+            <button id="captureMaxButton" class="button endpoint" type="button">记录 100% 安全端</button>
+            <output id="maxOutput">尚未记录</output>
+          </div>
+          <button id="saveCalibrationButton" class="button primary full" type="button">保存本通道标定</button>
+          <button id="rezeroButton" class="button warning full" type="button">以当前位置快速归零</button>
+          <label class="check-row">
+            <input id="calibrationConfirm" type="checkbox">
+            <span>物理急停可用，手未受外力，只测试所选通道</span>
+          </label>
+        </section>
+
+        <section class="panel recovery-panel">
+          <div class="section-heading">
+            <span>03</span>
+            <div>
+              <p>RECOVERY</p>
+              <h2>单轴越界恢复</h2>
+            </div>
+          </div>
+          <p class="recovery-warning">仅用于舵机位置落在软限位外时恢复。不会修改 ID、波特率、中位或标定数据。</p>
+          <label class="field-label" for="recoveryChannelSelect">恢复通道</label>
+          <select id="recoveryChannelSelect" class="select"></select>
+
+          <div class="recovery-readout">
+            <div><small>当前位置</small><output id="recoveryCurrentOutput">--</output></div>
+            <div><small>软限位</small><output id="recoveryRangeOutput">--</output></div>
+            <div><small>建议目标</small><output id="recoverySuggestedOutput">--</output></div>
+          </div>
+
+          <div class="recovery-presets">
+            <button id="recoverySuggestedButton" class="button recovery-preset" type="button">填入建议目标</button>
+            <button id="recoveryMinButton" class="button recovery-preset" type="button">填入标定 0% 端</button>
+            <button id="recoveryZeroButton" class="button recovery-preset" type="button" disabled title="v0.2.6 禁止跨边界直达">原始 0（禁跨界）</button>
+            <button id="recoveryMaxRawButton" class="button recovery-preset" type="button" disabled title="v0.2.6 禁止跨边界直达">原始 4095（禁跨界）</button>
+          </div>
+
+          <label class="field-label" for="recoveryTargetInput">原始目标位置（0–4095）</label>
+          <input id="recoveryTargetInput" class="input" type="number" min="0" max="4095" step="1" value="100">
+
+          <div class="jog-block">
+            <span class="field-label">低扭矩恢复点动（可越过软限位）</span>
+            <div class="jog-grid">
+              <button class="button recovery-jog" type="button" data-delta="-100">−100</button>
+              <button class="button recovery-jog" type="button" data-delta="-20">−20</button>
+              <button class="button recovery-jog" type="button" data-delta="-5">−5</button>
+              <button class="button recovery-jog" type="button" data-delta="5">+5</button>
+              <button class="button recovery-jog" type="button" data-delta="20">+20</button>
+              <button class="button recovery-jog" type="button" data-delta="100">+100</button>
+            </div>
+          </div>
+
+          <button id="recoveryRunButton" class="button warning full" type="button">低扭矩恢复到目标</button>
+          <label class="check-row recovery-confirm">
+            <input id="recoveryConfirm" type="checkbox">
+            <span>物理急停可用，所选轴无明显外力，其他六路保持卸力</span>
+          </label>
+          <label class="check-row recovery-boundary-confirm">
+            <input id="recoveryBoundaryConfirm" type="checkbox">
+            <span>v0.2.6 禁止位置模式直接跨越 0/4095；请沿数字连续方向分步恢复</span>
+          </label>
+          <p id="recoveryLimitsOutput" class="recovery-limits">固定保护：速度 50、输出上限 50/1000、电流 350mA、load 350、单次直接位移 ≤100 counts；扭矩使能和输出限制均回读确认。</p>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <div class="workspace-intro">
+          <div>
+            <span class="eyebrow dark">GESTURE LIBRARY</span>
+            <h2>动作展示</h2>
+          </div>
+          <div class="workspace-actions">
+            <label class="speed-control" for="globalSpeed">
+              <span>动作速度</span>
+              <input id="globalSpeed" type="range" min="20" max="100" step="5" value="90">
+              <output id="globalSpeedOutput">90%</output>
+              <small id="servoSpeedOutput">STS速度待连接</small>
+            </label>
+            <button id="stopButton" class="button stop" type="button" disabled>停止当前动作</button>
+          </div>
+        </div>
+        <p id="systemMessage" class="system-message" aria-live="polite">等待连接设备。</p>
+        <div id="gestureGrid" class="gesture-grid"></div>
+
+        <section class="vision-console" aria-labelledby="visionTitle">
+          <div class="vision-heading">
+            <div>
+              <span class="eyebrow dark">VISION FOLLOW</span>
+              <h2 id="visionTitle">视觉识别同步</h2>
+              <p>摄像头识别手部关键点；每轴保留 2% 内限位，超限轴停在边界，其余轴继续跟随。关闭开关或失去画面后立即冻结。</p>
+            </div>
+            <div class="vision-status-row">
+              <span id="visionCameraChip" class="chip muted">摄像头关闭</span>
+              <span id="visionTrackingChip" class="chip muted">未识别</span>
+              <span id="visionHeartbeatChip" class="chip muted">网页未接管</span>
+              <span id="visionSessionChip" class="chip muted">同步关闭</span>
+            </div>
+          </div>
+
+          <div class="vision-layout">
+            <div class="camera-column">
+              <div class="camera-frame">
+                <img id="visionPreview" alt="摄像头手部关键点预览">
+                <div id="cameraPlaceholder">启动视觉演示后在此显示模拟手部关键点</div>
+                <div id="visionCaptureGuide" class="vision-capture-guide" hidden aria-live="assertive">
+                  <span>视觉标定</span>
+                  <strong id="visionCapturePoseLabel">准备姿态</strong>
+                  <output id="visionCaptureCountdown">3</output>
+                  <small id="visionCaptureInstruction">倒计时结束后保持约 1 秒</small>
+                </div>
+              </div>
+              <div class="camera-controls">
+                <label>
+                  <span>视频来源</span>
+                  <select id="cameraIndex" class="select">
+                    <option value="1">浏览器模拟画面（推荐）</option>
+                    <option value="0">静态关键点示意</option>
+                  </select>
+                </label>
+                <label>
+                  <span>操作者手别</span>
+                  <select id="visionHandedness" class="select">
+                    <option value="Right">右手</option>
+                    <option value="Left">左手</option>
+                  </select>
+                </label>
+                <button id="startCameraButton" class="button primary" type="button">启动摄像头</button>
+                <button id="stopCameraButton" class="button ghost" type="button" disabled>停止摄像头</button>
+              </div>
+            </div>
+
+            <div class="vision-control-column">
+              <div class="vision-calibration">
+                <div class="vision-calibration-heading">
+                  <div>
+                    <strong>四姿态视觉标定</strong>
+                    <small>只标定人手识别范围，不会改写原按键手势参数。</small>
+                  </div>
+                  <button id="resetVisionCalibrationButton" class="button ghost calibration-reset" type="button">清除并重新标定</button>
+                </div>
+                <div class="vision-pose-grid">
+                  <button class="button vision-pose" data-pose="open_hand" data-label="完全张开" data-instruction="五指伸直并自然分开，整只手保持在画面内" type="button">① 完全张开 <span>未采集</span></button>
+                  <button class="button vision-pose" data-pose="closed_fist" data-label="自然握拳" data-instruction="四指充分屈曲，拇指自然放于食指外侧" type="button">② 自然握拳 <span>未采集</span></button>
+                  <button class="button vision-pose" data-pose="thumb_abducted" data-label="拇指外展" data-instruction="四指伸直，拇指向掌面外侧充分展开" type="button">③ 拇指外展 <span>未采集</span></button>
+                  <button class="button vision-pose" data-pose="thumb_opposed" data-label="拇指对掌" data-instruction="四指伸直，拇指朝小指根部做对掌动作" type="button">④ 拇指对掌 <span>未采集</span></button>
+                </div>
+                <p id="visionCalibrationCheck" class="vision-calibration-check neutral">尚未获得可用标定；请按 ① → ④ 依次采集。</p>
+              </div>
+              <div class="vision-enable-row">
+                <label class="check-row">
+                  <input id="visionConfirm" type="checkbox">
+                  <span>已了解这是纯前端演示，动作不会发送到真实舵机</span>
+                </label>
+                <label class="vision-scale" for="visionScale">
+                  <span>视觉幅度</span>
+                  <input id="visionScale" type="range" min="10" max="100" step="5" value="35">
+                  <output id="visionScaleOutput">35%</output>
+                </label>
+                <button id="visionToggleButton" class="vision-toggle" type="button" disabled>
+                  <span class="toggle-indicator"></span>
+                  <span id="visionToggleLabel">开启视觉同步</span>
+                </button>
+              </div>
+              <p id="visionReason" class="vision-reason">先启动摄像头并完成视觉标定。</p>
+              <div id="visionAxisList" class="vision-axis-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tuner">
+          <div class="tuner-heading">
+            <div>
+              <span class="eyebrow dark">NORMALIZED TUNER</span>
+              <h2>七路手势调节器</h2>
+            </div>
+            <div class="tuner-selectors">
+              <label>
+                <span>编辑手势</span>
+                <select id="gestureSelect" class="select"></select>
+              </label>
+              <label>
+                <span>配置名称</span>
+                <input id="gestureName" class="input" maxlength="32" value="custom_pose">
+              </label>
+              <label>
+                <span>显示名称</span>
+                <input id="gestureLabel" class="input" maxlength="24" value="自定义手势">
+              </label>
+            </div>
+          </div>
+          <div id="sliderGrid" class="slider-grid"></div>
+          <div class="tuner-footer">
+            <label>
+              <span>基准动作时间（100%速度）</span>
+              <input id="durationInput" class="input compact" type="number" min="0.2" max="10" step="0.1" value="1.5">
+            </label>
+            <label>
+              <span>保持时间</span>
+              <input id="holdInput" class="input compact" type="number" min="0" max="30" step="0.1" value="0.5">
+            </label>
+            <label>
+              <span>预览幅度</span>
+              <input id="previewScale" type="range" min="10" max="100" step="5" value="25">
+              <output id="previewScaleOutput">25%</output>
+            </label>
+            <label class="check-row inline-check">
+              <input id="contactAllowed" type="checkbox">
+              <span>允许物体接触</span>
+            </label>
+            <label class="check-row inline-check">
+              <input id="previewConfirm" type="checkbox">
+              <span>大幅预览已确认安全</span>
+            </label>
+            <label class="check-row inline-check">
+              <input id="gestureVerified" type="checkbox">
+              <span>标记为实机确认</span>
+            </label>
+            <div class="tuner-actions">
+              <button id="previewButton" class="button primary" type="button">低速预览</button>
+              <button id="saveGestureButton" class="button ghost" type="button">保存手势</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="telemetry-rail">
+        <div class="telemetry-header">
+          <span class="eyebrow">LIVE FEEDBACK</span>
+          <h2>七路遥测</h2>
+        </div>
+        <section class="protection-editor" aria-label="保护参数设置">
+          <div class="protection-editor-heading">
+            <div>
+              <span class="eyebrow">SAFETY ENVELOPE</span>
+              <strong>保护参数设置</strong>
+            </div>
+            <span class="hard-ceiling">最高 250 / 1000</span>
+          </div>
+
+          <div class="protection-group">
+            <div class="protection-group-title">
+              <strong>输出硬上限</strong>
+              <small>直接写入七只舵机 SRAM 48 地址</small>
+            </div>
+            <label class="protection-row" for="motionTorqueLimit">
+              <span>运动上限</span>
+              <input id="motionTorqueLimit" type="range" min="20" max="250" step="10" value="120">
+              <output id="motionTorqueLimitOutput">120 · 0.35Nm≈</output>
+            </label>
+            <label class="protection-row" for="holdTorqueLimit">
+              <span>抓稳保持</span>
+              <input id="holdTorqueLimit" type="range" min="0" max="250" step="10" value="50">
+              <output id="holdTorqueLimitOutput">50 · 0.15Nm≈</output>
+            </label>
+          </div>
+
+          <div class="protection-group contact-settings">
+            <div class="protection-group-title">
+              <strong>接触识别</strong>
+              <small>只判断“抓稳”，不等同于输出上限</small>
+            </div>
+            <label class="protection-row" for="contactCurrentThreshold">
+              <span>电流阈值</span>
+              <input id="contactCurrentThreshold" type="range" min="100" max="900" step="25" value="250">
+              <output id="contactCurrentThresholdOutput">250mA</output>
+            </label>
+            <label class="protection-row" for="contactLoadThreshold">
+              <span>load 阈值</span>
+              <input id="contactLoadThreshold" type="range" min="10" max="800" step="10" value="80">
+              <output id="contactLoadThresholdOutput">80</output>
+            </label>
+            <label class="protection-row" for="contactDurationThreshold">
+              <span>确认时间</span>
+              <input id="contactDurationThreshold" type="range" min="0.10" max="1.00" step="0.05" value="0.15">
+              <output id="contactDurationThresholdOutput">0.15s</output>
+            </label>
+          </div>
+
+          <p class="protection-rule-note">
+            接触需同时满足：目标尚未到达、位置基本不动、且电流或 load 越过阈值。
+          </p>
+          <label class="check-row protection-confirm">
+            <input id="protectionConfirm" type="checkbox">
+            <span>已卸力，物理急停可用，并从低上限开始测试</span>
+          </label>
+          <div class="protection-actions">
+            <button id="resetProtectionButton" class="button rail-ghost" type="button">恢复已保存</button>
+            <button id="applyProtectionButton" class="button rail-apply" type="button">保存保护参数</button>
+          </div>
+          <output id="protectionVerificationOutput" class="protection-verification pending">
+            等待下次使能后逐路回读确认
+          </output>
+        </section>
+        <section class="grip-monitor" aria-label="抓握扭矩监视">
+          <div class="grip-monitor-heading">
+            <div>
+              <span class="eyebrow">GRIP PROTECTION</span>
+              <strong>抓握扭矩监视</strong>
+            </div>
+            <span id="contactCountChip" class="effort-chip muted">未接触</span>
+          </div>
+          <div class="grip-summary-grid">
+            <div>
+              <small>当前最大估算</small>
+              <output id="currentTorqueOutput">0.00 Nm</output>
+            </div>
+            <div>
+              <small>本次动作峰值</small>
+              <output id="peakTorqueOutput">0.00 Nm</output>
+            </div>
+            <div>
+              <small>配置运动上限</small>
+              <output id="torqueCapOutput">0.00 Nm</output>
+            </div>
+          </div>
+          <p id="contactRuleOutput" class="contact-rule">等待读取接触判据。</p>
+          <p id="torqueModelNote" class="torque-model-note">估算值不等于扭矩传感器实测值。</p>
+        </section>
+        <div id="telemetryList" class="telemetry-list"></div>
+      </aside>
+    </main>
+
+    <footer class="event-strip">
+      <span>运行记录</span>
+      <output id="eventOutput">展示版已载入，点击“连接模拟器”开始体验。</output>
+      <time id="clockOutput"></time>
+    </footer>
+
+    <script src="./demo-backend.js?v=1.0.0" defer></script>
+    <script src="./app.js?v=1.0.0" defer></script>
+  </body>
+</html>
