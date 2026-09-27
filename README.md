@@ -20,6 +20,8 @@
 
 **技术关键词：** MediaPipe · Python · FastAPI · 串口通信 · 总线舵机 · 视觉遥操作
 
+[打开控制台交互演示 →](https://642-cho.github.io/642-CHO/control-console-demo/)
+
 [查看项目与实机视频 →](https://github.com/642-CHO/dexterous-hand-teleoperation)
 
 ## 技术与实践
